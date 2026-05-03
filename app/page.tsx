@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -44,7 +45,7 @@ export default function Home() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
         {shows.map((show: any) => (
-          <div key={show.id} className="bg-gray-800 rounded-xl overflow-hidden hover:scale-105 transition cursor-pointer">
+          <Link key={show.id} href={`/show/${show.id}`} className="bg-gray-800 rounded-xl overflow-hidden hover:scale-105 transition cursor-pointer block">
             {show.poster_path ? (
               <img
                 src={`https://image.tmdb.org/t/p/w300${show.poster_path}`}
@@ -59,7 +60,7 @@ export default function Home() {
               <p className="text-gray-400 text-xs">{show.first_air_date?.slice(0, 4)}</p>
               <p className="text-yellow-400 text-xs">⭐ {show.vote_average?.toFixed(1)}</p>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </main>
