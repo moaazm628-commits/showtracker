@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../AuthContext';
 
 export default function ShowDetail() {
   const { id } = useParams();
+  const { user, username } = useAuth();
   const [show, setShow] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [author, setAuthor] = useState('');
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -41,19 +42,22 @@ export default function ShowDetail() {
 
   async function submitReview(e: any) {
     e.preventDefault();
+    if (!user) {
+      setMessage('❌ Please login to submit a review!');
+      return;
+    }
     setSubmitting(true);
     const { error } = await supabase.from('reviews').insert([{
       show_id: Number(id),
       show_name: show?.name,
       rating,
       review,
-      author
+      author: username || user.email
     }]);
     if (error) {
       setMessage('❌ Something went wrong!');
     } else {
       setMessage('✅ Review submitted!');
-      setAuthor('');
       setRating(5);
       setReview('');
       const { data } = await supabase.from('reviews').select('*').eq('show_id', id).order('created_at', { ascending: false });
@@ -101,44 +105,41 @@ export default function ShowDetail() {
         {/* Review Form */}
         <div className="mt-10 bg-gray-800 rounded-xl p-6">
           <h2 className="text-xl font-bold text-blue-400 mb-4">✍️ Write a Review</h2>
-          <form onSubmit={submitReview} className="flex flex-col gap-4">
-            <input
-              type="text"
-              placeholder="Your name"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              required
-              className="p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
-            />
-            <div className="flex items-center gap-3">
-              <label className="text-gray-300">Rating:</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={rating}
-                onChange={(e) => setRating(Number(e.target.value))}
-                className="w-20 p-2 rounded-lg bg-gray-700 text-white border border-gray-600"
+          {!user ? (
+            <p className="text-gray-400">Please <span className="text-blue-400">login</span> to write a review!</p>
+          ) : (
+            <form onSubmit={submitReview} className="flex flex-col gap-4">
+              <p className="text-gray-400 text-sm">Reviewing as <span className="text-blue-400 font-bold">{username || user.email}</span></p>
+              <div className="flex items-center gap-3">
+                <label className="text-gray-300">Rating:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={rating}
+                  onChange={(e) => setRating(Number(e.target.value))}
+                  className="w-20 p-2 rounded-lg bg-gray-700 text-white border border-gray-600"
+                />
+                <span className="text-yellow-400">⭐ /10</span>
+              </div>
+              <textarea
+                placeholder="Write your review..."
+                value={review}
+                onChange={(e) => setReview(e.target.value)}
+                required
+                rows={4}
+                className="p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
               />
-              <span className="text-yellow-400">⭐ /10</span>
-            </div>
-            <textarea
-              placeholder="Write your review..."
-              value={review}
-              onChange={(e) => setReview(e.target.value)}
-              required
-              rows={4}
-              className="p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
-            />
-            <button
-              type="submit"
-              disabled={submitting}
-              className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold disabled:opacity-50"
-            >
-              {submitting ? 'Submitting...' : 'Submit Review'}
-            </button>
-            {message && <p>{message}</p>}
-          </form>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold disabled:opacity-50"
+              >
+                {submitting ? 'Submitting...' : 'Submit Review'}
+              </button>
+              {message && <p className="text-white">{message}</p>}
+            </form>
+          )}
         </div>
 
         {/* Reviews List */}
