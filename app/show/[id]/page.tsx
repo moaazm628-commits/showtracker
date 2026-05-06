@@ -25,7 +25,7 @@ export default function ShowDetail() {
   useEffect(() => {
     async function fetchShow() {
       const res = await fetch(
-        `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&append_to_response=credits`
+        `https://api.themoviedb.org/3/tv/${id}?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&append_to_response=credits,videos`
       );
       const data = await res.json();
       setShow(data);
@@ -58,7 +58,7 @@ export default function ShowDetail() {
   async function submitReview(e: any) {
     e.preventDefault();
     if (!user) {
-      setMessage('❌ Please login to submit a review!');
+      setMessage('Please login to submit a review!');
       return;
     }
     setSubmitting(true);
@@ -79,9 +79,9 @@ export default function ShowDetail() {
     }]);
 
     if (error) {
-      setMessage('❌ Something went wrong!');
+      setMessage('Something went wrong!');
     } else {
-      setMessage('✅ Review submitted!');
+      setMessage('Review submitted!');
       setRating(5);
       setReview('');
       const { data } = await supabase.from('reviews').select('*').eq('show_id', id).order('created_at', { ascending: false });
@@ -93,33 +93,34 @@ export default function ShowDetail() {
   if (loading) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Loading...</div>;
   if (!show) return <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">Show not found</div>;
 
+  const trailer = show.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+
   return (
     <div className="min-h-screen w-full bg-gray-950 text-white">
-      {/* Backdrop */}
       <div className="relative">
         {show.backdrop_path && (
           <img src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`} alt={show.name} className="w-full h-72 object-cover opacity-30" />
         )}
         <div className="absolute top-4 left-4">
-          <Link href="/" className="text-blue-400 hover:text-white">← Back</Link>
+          <Link href="/" className="text-blue-400 hover:text-white">Back</Link>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto p-6 -mt-10 relative">
-        {/* Show Info */}
         <div className="flex gap-6 mb-8">
           {show.poster_path && (
             <img src={`https://image.tmdb.org/t/p/w300${show.poster_path}`} alt={show.name} className="w-40 rounded-xl shadow-lg flex-shrink-0" />
           )}
           <div>
             <h1 className="text-3xl font-bold text-blue-400">{show.name}</h1>
-            {show.original_name !== show.name && <p className="text-gray-400 text-sm">{show.original_name}</p>}
+            {show.original_name !== show.name && (
+              <p className="text-gray-400 text-sm">{show.original_name}</p>
+            )}
             <div className="flex gap-4 mt-2 text-sm text-gray-300 flex-wrap">
-              <span>⭐ {show.vote_average?.toFixed(1)}/10</span>
-              <span>📅 {show.first_air_date?.slice(0, 4)}</span>
-              <span>🎬 {show.number_of_seasons} Seasons</span>
-              <span>📺 {show.number_of_episodes} Episodes</span>
-              {show.origin_country && <span>🌍 {show.origin_country.join(', ')}</span>}
+              <span>Rating: {show.vote_average?.toFixed(1)}/10</span>
+              <span>Year: {show.first_air_date?.slice(0, 4)}</span>
+              <span>Seasons: {show.number_of_seasons}</span>
+              <span>Episodes: {show.number_of_episodes}</span>
             </div>
             <div className="flex gap-2 mt-2 flex-wrap">
               {show.genres?.map((g: any) => (
@@ -127,12 +128,16 @@ export default function ShowDetail() {
               ))}
             </div>
             <p className="mt-4 text-gray-300 leading-relaxed text-sm">{show.overview}</p>
+            {trailer && (
+              <a href={`https://www.youtube.com/watch?v=${trailer.key}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 mt-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold">
+                Watch Trailer
+              </a>
+            )}
           </div>
         </div>
 
-        {/* Seasons */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-blue-400 mb-4">📺 Seasons</h2>
+          <h2 className="text-xl font-bold text-blue-400 mb-4">Seasons</h2>
           <div className="flex gap-3 flex-wrap">
             {show.seasons?.filter((s: any) => s.season_number > 0).map((season: any) => (
               <button
@@ -144,19 +149,15 @@ export default function ShowDetail() {
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition ${selectedSeason?.id === season.id ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}`}
               >
-                Season {season.season_number}
-                <span className="text-xs ml-1 opacity-70">({season.episode_count} eps)</span>
+                Season {season.season_number} ({season.episode_count} eps)
               </button>
             ))}
           </div>
         </div>
 
-        {/* Episodes */}
         {selectedSeason && (
           <div className="mb-8">
-            <h2 className="text-xl font-bold text-blue-400 mb-4">
-              🎬 Season {selectedSeason.season_number} Episodes
-            </h2>
+            <h2 className="text-xl font-bold text-blue-400 mb-4">Season {selectedSeason.season_number} Episodes</h2>
             {loadingEpisodes ? (
               <p className="text-gray-400">Loading episodes...</p>
             ) : (
@@ -175,7 +176,7 @@ export default function ShowDetail() {
                     <div>
                       <p className="font-bold text-sm">E{ep.episode_number}: {ep.name}</p>
                       <p className="text-gray-400 text-xs">{ep.air_date}</p>
-                      {ep.vote_average > 0 && <p className="text-yellow-400 text-xs">⭐ {ep.vote_average?.toFixed(1)}</p>}
+                      {ep.vote_average > 0 && <p className="text-yellow-400 text-xs">{ep.vote_average?.toFixed(1)}/10</p>}
                     </div>
                   </button>
                 ))}
@@ -184,82 +185,50 @@ export default function ShowDetail() {
           </div>
         )}
 
-        {/* Review Form */}
         <div className="bg-gray-800 rounded-xl p-6 mb-8">
-          <h2 className="text-xl font-bold text-blue-400 mb-4">✍️ Write a Review</h2>
+          <h2 className="text-xl font-bold text-blue-400 mb-4">Write a Review</h2>
           {!user ? (
-            <p className="text-gray-400">Please <span className="text-blue-400">login</span> to write a review!</p>
+            <p className="text-gray-400">Please login to write a review!</p>
           ) : (
-            <>
-              {/* Review Type Selector */}
+            <div>
               <div className="flex gap-2 mb-4 flex-wrap">
-                <button
-                  onClick={() => setReviewType('show')}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold ${reviewType === 'show' ? 'bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'}`}
-                >
-                  📺 Review Show
+                <button onClick={() => setReviewType('show')} className={`px-4 py-2 rounded-lg text-sm font-bold ${reviewType === 'show' ? 'bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                  Review Show
                 </button>
                 {selectedSeason && (
-                  <button
-                    onClick={() => setReviewType('season')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold ${reviewType === 'season' ? 'bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'}`}
-                  >
-                    🎬 Review Season {selectedSeason.season_number}
+                  <button onClick={() => setReviewType('season')} className={`px-4 py-2 rounded-lg text-sm font-bold ${reviewType === 'season' ? 'bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                    Review Season {selectedSeason.season_number}
                   </button>
                 )}
                 {selectedEpisode && (
-                  <button
-                    onClick={() => setReviewType('episode')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold ${reviewType === 'episode' ? 'bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'}`}
-                  >
-                    🎞️ Review Episode {selectedEpisode.episode_number}
+                  <button onClick={() => setReviewType('episode')} className={`px-4 py-2 rounded-lg text-sm font-bold ${reviewType === 'episode' ? 'bg-blue-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
+                    Review Episode {selectedEpisode.episode_number}
                   </button>
                 )}
               </div>
-
               <p className="text-gray-400 text-sm mb-4">
-                Reviewing as <span className="text-blue-400 font-bold">{username || user.email}</span>
-                {reviewType === 'season' && selectedSeason && ` · Season ${selectedSeason.season_number}`}
-                {reviewType === 'episode' && selectedEpisode && ` · E${selectedEpisode.episode_number}: ${selectedEpisode.name}`}
+                Reviewing as {username || user.email}
+                {reviewType === 'season' && selectedSeason && ` - Season ${selectedSeason.season_number}`}
+                {reviewType === 'episode' && selectedEpisode && ` - E${selectedEpisode.episode_number}: ${selectedEpisode.name}`}
               </p>
-
               <form onSubmit={submitReview} className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                   <label className="text-gray-300">Rating:</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={rating}
-                    onChange={(e) => setRating(Number(e.target.value))}
-                    className="w-20 p-2 rounded-lg bg-gray-700 text-white border border-gray-600"
-                  />
-                  <span className="text-yellow-400">⭐ /10</span>
+                  <input type="number" min="1" max="10" value={rating} onChange={(e) => setRating(Number(e.target.value))} className="w-20 p-2 rounded-lg bg-gray-700 text-white border border-gray-600" />
+                  <span className="text-yellow-400">/10</span>
                 </div>
-                <textarea
-                  placeholder="Write your review..."
-                  value={review}
-                  onChange={(e) => setReview(e.target.value)}
-                  required
-                  rows={4}
-                  className="p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
-                />
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold disabled:opacity-50"
-                >
+                <textarea placeholder="Write your review..." value={review} onChange={(e) => setReview(e.target.value)} required rows={4} className="p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-400" />
+                <button type="submit" disabled={submitting} className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold disabled:opacity-50">
                   {submitting ? 'Submitting...' : 'Submit Review'}
                 </button>
-                {message && <p className="text-white">{message}</p>}
+                {message && <p className="text-white mt-2">{message}</p>}
               </form>
-            </>
+            </div>
           )}
         </div>
 
-        {/* Reviews List */}
         <div>
-          <h2 className="text-xl font-bold text-blue-400 mb-4">💬 All Reviews</h2>
+          <h2 className="text-xl font-bold text-blue-400 mb-4">All Reviews</h2>
           {reviews.length === 0 && <p className="text-gray-400">No reviews yet. Be the first!</p>}
           {reviews.map((r) => (
             <div key={r.id} className="bg-gray-800 rounded-xl p-4 mb-4">
@@ -267,10 +236,10 @@ export default function ShowDetail() {
                 <div>
                   <span className="font-bold">{r.author}</span>
                   {r.show_name !== show.name && (
-                    <span className="text-blue-400 text-xs ml-2">· {r.show_name.replace(show.name + ' - ', '')}</span>
+                    <span className="text-blue-400 text-xs ml-2">{r.show_name.replace(show.name + ' - ', '')}</span>
                   )}
                 </div>
-                <span className="text-yellow-400">⭐ {r.rating}/10</span>
+                <span className="text-yellow-400">{r.rating}/10</span>
               </div>
               <p className="text-gray-300">{r.review}</p>
               <p className="text-gray-500 text-xs mt-2">{new Date(r.created_at).toLocaleDateString()}</p>
