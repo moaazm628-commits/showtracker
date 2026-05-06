@@ -23,7 +23,9 @@ export default function Header() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <span className="text-gray-300 text-sm hidden md:block">👤 {username || user.email}</span>
+              <Link href="/profile" className="text-gray-300 text-sm hidden md:block hover:text-blue-400">
+                👤 {username || user.email}
+              </Link>
               <button
                 onClick={logout}
                 className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm"
