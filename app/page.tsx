@@ -81,17 +81,25 @@ export default function Home() {
     if (!query) return;
     setLoading(true);
     setSearched(true);
-    const res = await fetch(
-      `https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}`
+
+    const [enRes, arRes] = await Promise.all([
+      fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=en-US`),
+      fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=ar-SA`),
+    ]);
+
+    const [enData, arData] = await Promise.all([enRes.json(), arRes.json()]);
+
+    const combined = [...(enData.results || []), ...(arData.results || [])];
+    const unique = combined.filter((show, index, self) =>
+      index === self.findIndex((s) => s.id === show.id)
     );
-    const data = await res.json();
-    setSearchResults(data.results || []);
+
+    setSearchResults(unique);
     setLoading(false);
   }
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-6">
-      <h1 className="text-4xl font-bold text-center mb-2 text-blue-400">📺 ShowTracker</h1>
       <p className="text-center text-gray-400 mb-8">Track, rate and review TV shows from every country</p>
 
       <div className="flex gap-2 max-w-xl mx-auto mb-10">
@@ -100,7 +108,7 @@ export default function Home() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && searchShows()}
-          placeholder="Search any TV show..."
+          placeholder="Search in English or Arabic..."
           className="flex-1 p-3 rounded-lg bg-gray-800 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
         />
         <button onClick={searchShows} className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold">
