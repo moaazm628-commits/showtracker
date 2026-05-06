@@ -79,7 +79,6 @@ export default function Home() {
     }
     fetchAll();
 
-    // Close suggestions when clicking outside
     function handleClickOutside(e: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
@@ -139,9 +138,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-6">
-      
-
-      <div className="relative max-w-xl mx-auto mb-10" ref={searchRef}>
+      <div className="relative max-w-xl mx-auto mb-10 mt-4" ref={searchRef}>
         <div className="flex gap-2">
           <input
             type="text"
@@ -160,7 +157,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Suggestions Dropdown */}
         {showSuggestions && suggestions.length > 0 && (
           <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-xl mt-1 z-50 overflow-hidden shadow-xl">
             {suggestions.map((show) => (
