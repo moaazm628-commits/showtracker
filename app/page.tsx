@@ -42,12 +42,12 @@ function ReviewCard({ review }: { review: any }) {
 
 export default function Home() {
   const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [trending, setTrending] = useState([]);
-  const [popular, setPopular] = useState([]);
-  const [topRated, setTopRated] = useState([]);
-  const [latest, setLatest] = useState([]);
+  const [trending, setTrending] = useState<any[]>([]);
+  const [popular, setPopular] = useState<any[]>([]);
+  const [topRated, setTopRated] = useState<any[]>([]);
+  const [latest, setLatest] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
