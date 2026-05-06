@@ -139,7 +139,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-6">
-      <p className="text-center text-gray-400 mb-8">Track, rate and review TV shows from every country</p>
+      
 
       <div className="relative max-w-xl mx-auto mb-10" ref={searchRef}>
         <div className="flex gap-2">
