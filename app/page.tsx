@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
 
@@ -43,6 +43,7 @@ function ReviewCard({ review }: { review: any }) {
 export default function Home() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [trending, setTrending] = useState([]);
   const [popular, setPopular] = useState([]);
   const [topRated, setTopRated] = useState([]);
@@ -50,6 +51,8 @@ export default function Home() {
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchAll() {
@@ -75,12 +78,49 @@ export default function Home() {
       setReviews(data || []);
     }
     fetchAll();
+
+    // Close suggestions when clicking outside
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    async function fetchSuggestions() {
+      if (query.length < 2) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      const [enRes, arRes] = await Promise.all([
+        fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=en-US`),
+        fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=ar-SA`),
+      ]);
+
+      const [enData, arData] = await Promise.all([enRes.json(), arRes.json()]);
+      const combined = [...(enData.results || []), ...(arData.results || [])];
+      const unique = combined.filter((show, index, self) =>
+        index === self.findIndex((s) => s.id === show.id)
+      ).slice(0, 6);
+
+      setSuggestions(unique);
+      setShowSuggestions(true);
+    }
+
+    const timer = setTimeout(fetchSuggestions, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   async function searchShows() {
     if (!query) return;
     setLoading(true);
     setSearched(true);
+    setShowSuggestions(false);
 
     const [enRes, arRes] = await Promise.all([
       fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=en-US`),
@@ -88,7 +128,6 @@ export default function Home() {
     ]);
 
     const [enData, arData] = await Promise.all([enRes.json(), arRes.json()]);
-
     const combined = [...(enData.results || []), ...(arData.results || [])];
     const unique = combined.filter((show, index, self) =>
       index === self.findIndex((s) => s.id === show.id)
@@ -102,20 +141,50 @@ export default function Home() {
     <main className="min-h-screen bg-gray-950 text-white p-6">
       <p className="text-center text-gray-400 mb-8">Track, rate and review TV shows from every country</p>
 
-      <div className="flex gap-2 max-w-xl mx-auto mb-10">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && searchShows()}
-          placeholder="Search in English or Arabic..."
-          className="flex-1 p-3 rounded-lg bg-gray-800 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
-        />
-        <button onClick={searchShows} className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold">
-          Search
-        </button>
-        {searched && (
-          <button onClick={() => { setSearched(false); setQuery(''); }} className="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg">✕</button>
+      <div className="relative max-w-xl mx-auto mb-10" ref={searchRef}>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && searchShows()}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            placeholder="Search in English or Arabic..."
+            className="flex-1 p-3 rounded-lg bg-gray-800 text-white border border-gray-600 focus:outline-none focus:border-blue-400"
+          />
+          <button onClick={searchShows} className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg font-bold">
+            Search
+          </button>
+          {searched && (
+            <button onClick={() => { setSearched(false); setQuery(''); setSuggestions([]); }} className="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg">✕</button>
+          )}
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-xl mt-1 z-50 overflow-hidden shadow-xl">
+            {suggestions.map((show) => (
+              <Link
+                key={show.id}
+                href={`/show/${show.id}`}
+                onClick={() => { setShowSuggestions(false); setQuery(''); }}
+                className="flex items-center gap-3 p-3 hover:bg-gray-700 transition"
+              >
+                {show.poster_path ? (
+                  <img src={`https://image.tmdb.org/t/p/w92${show.poster_path}`} alt={show.name} className="w-10 h-14 object-cover rounded" />
+                ) : (
+                  <div className="w-10 h-14 bg-gray-600 rounded flex items-center justify-center text-xs">📺</div>
+                )}
+                <div>
+                  <p className="font-bold text-white text-sm">{show.name}</p>
+                  {show.original_name !== show.name && (
+                    <p className="text-gray-400 text-xs">{show.original_name}</p>
+                  )}
+                  <p className="text-gray-400 text-xs">{show.first_air_date?.slice(0, 4)} · ⭐ {show.vote_average?.toFixed(1)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
 
