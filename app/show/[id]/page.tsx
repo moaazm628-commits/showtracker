@@ -306,7 +306,12 @@ export default function ShowDetail() {
                 <span className="text-yellow-400 font-bold">⭐ {r.rating}/10</span>
               </div>
               <p className="text-gray-300">{r.review}</p>
-              <p className="text-gray-600 text-xs mt-2">{new Date(r.created_at).toLocaleDateString()}</p>
+              <div className="flex justify-between items-center mt-2">
+  <p className="text-gray-600 text-xs">{new Date(r.created_at).toLocaleDateString()}</p>
+  {username === r.author && (
+    <button onClick={async () => { await supabase.from('reviews').delete().eq('id', r.id); setReviews(reviews.filter(rev => rev.id !== r.id)); }} className="text-red-500 hover:text-red-400 text-xs">Delete</button>
+  )}
+</div>
             </div>
           ))}
         </div>
