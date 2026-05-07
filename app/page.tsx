@@ -50,7 +50,7 @@ function ReviewCard({ review }: { review: any }) {
         <span className="text-yellow-400 text-xs ml-1">{review.rating}/10</span>
       </div>
       <p className="text-gray-300 text-sm mt-2 line-clamp-3">{review.review}</p>
-      <p className="text-gray-600 text-xs mt-3">by {review.author}</p>
+     <p className="text-gray-600 text-xs mt-3">by <Link href={'/profile/' + review.author} className="hover:text-yellow-400">{review.author}</Link></p>
     </div>
   );
 }
