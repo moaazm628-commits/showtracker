@@ -22,7 +22,12 @@ export default function Header() {
           🎬 🎬 WatchVerse
         </Link>
 
-        <div className="flex items-center gap-6">
+        <div className="flex-1 max-w-sm mx-6">
+  <form onSubmit={(e) => { e.preventDefault(); const q = (e.target as any).q.value; if (q) window.location.href = '/?search=' + encodeURIComponent(q); }}>
+    <input name="q" placeholder="Search shows..." className="w-full px-4 py-1.5 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-yellow-500 text-sm" />
+  </form>
+</div>
+<div className="flex items-center gap-6">
           {user ? (
             <>
               <Link href="/profile" className="text-gray-300 text-sm hover:text-yellow-400 transition hidden md:block">
