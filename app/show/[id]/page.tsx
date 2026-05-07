@@ -298,7 +298,7 @@ export default function ShowDetail() {
             <div key={r.id} className="bg-gray-900 rounded-xl p-4 mb-4 border border-gray-800">
               <div className="flex justify-between items-center mb-2">
                 <div>
-                  <span className="font-bold text-white">{r.author}</span>
+                   <Link href={'/profile/' + r.author} className="font-bold text-white hover:text-yellow-400">{r.author}</Link>
                   {r.show_name !== show.name && (
                     <span className="text-yellow-400 text-xs ml-2">{r.show_name.replace(show.name + ' - ', '')}</span>
                   )}
