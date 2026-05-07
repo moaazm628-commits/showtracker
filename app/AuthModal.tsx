@@ -48,6 +48,14 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
     }
     setLoading(false);
   }
+  async function handleGoogleSignIn() {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://thewatchverse.vercel.app'
+    }
+  });
+}
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
@@ -93,6 +101,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
             {loading ? 'Loading...' : isLogin ? 'Login' : 'Sign Up'}
           </button>
         </form>
+        <button onClick={handleGoogleSignIn} className="w-full mt-3 py-2 px-4 bg-white text-gray-800 rounded-lg font-medium hover:bg-gray-100">Continue with Google</button>
 
         {message && <p className="text-center mt-4 text-white">{message}</p>}
 
