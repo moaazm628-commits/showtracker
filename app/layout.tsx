@@ -4,8 +4,8 @@ import { AuthProvider } from "./AuthContext";
 import Header from "./Header";
 
 export const metadata: Metadata = {
-  title: "ShowTracker",
-  description: "Track, rate and review TV shows from every country",
+  title: "watchverse",
+  description: "your universe of tv shows-rate, review, debate and dicover",
 };
 
 export default function RootLayout({
