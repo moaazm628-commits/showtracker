@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "./AuthContext";
 import Header from "./Header";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
-  title: "watchverse",
-  description: "your universe of tv shows-rate, review, debate and dicover",
+  title: "WatchVerse",
+  description: "Your universe of TV shows - rate, review and discover",
 };
 
 export default function RootLayout({
@@ -19,6 +20,7 @@ export default function RootLayout({
         <AuthProvider>
           <Header />
           {children}
+          <Analytics />
         </AuthProvider>
       </body>
     </html>
