@@ -86,6 +86,7 @@ export default function Profile() {
                     <div className="w-full h-48 bg-gray-800 rounded-lg flex items-center justify-center text-xs text-gray-400 text-center p-2">{w.show_name}</div>
                   )}
                   <p className="text-xs mt-1 truncate text-gray-300">{w.show_name}</p>
+                  {w.rating && <p className="text-yellow-400 text-xs">⭐ {w.rating}/10</p>}
                 </Link>
               ))}
             </div>
