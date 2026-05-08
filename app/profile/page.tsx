@@ -115,7 +115,15 @@ export default function Profile() {
                       <span className="text-yellow-400 font-bold">⭐ {r.rating}/10</span>
                     </div>
                     <p className="text-gray-300 text-sm">{r.review}</p>
-                    <p className="text-gray-600 text-xs mt-2">{new Date(r.created_at).toLocaleDateString()}</p>
+                    <p className="text-gray-600 text-xs mt-2">{new Date(r.created_at).toLocaleDateString()}</p><button
+                  onClick={async () => {
+                    await supabase.from('reviews').delete().eq('id', r.id);
+                    setReviews(reviews.filter((rev) => rev.id !== r.id));
+                  }}
+                  className="text-red-500 hover:text-red-400 text-xs mt-2"
+                >
+                  🗑️ Delete Review
+                </button>
                   </div>
                 ))}
               </div>
