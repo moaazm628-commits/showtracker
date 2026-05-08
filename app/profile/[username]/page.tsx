@@ -5,90 +5,11 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../AuthContext';
-
-function ReviewCard({ review }: { review: any }) {
-  const { user } = useAuth();
-  const [likes, setLikes] = useState(0);
-  const [liked, setLiked] = useState(false);
-  const [likeLoading, setLikeLoading] = useState(false);
-
-  useEffect(() => {
-    async function checkLike() {
-      if (!user) return;
-      const { data } = await supabase
-        .from('likes').select('id')
-        .eq('user_id', user.id).eq('review_id', review.id).single();
-      setLiked(!!data);
-    }
-    async function getLikes() {
-      const { count } = await supabase
-        .from('likes').select('*', { count: 'exact', head: true })
-        .eq('review_id', review.id);
-      setLikes(count || 0);
-    }
-    checkLike();
-    getLikes();
-  }, [user, review.id]);
-
-  async function toggleLike() {
-    if (!user) return;
-    setLikeLoading(true);
-    if (liked) {
-      await supabase.from('likes').delete().eq('user_id', user.id).eq('review_id', review.id);
-      setLikes((l) => l - 1);
-      setLiked(false);
-    } else {
-      await supabase.from('likes').insert([{ user_id: user.id, review_id: review.id }]);
-      setLikes((l) => l + 1);
-      setLiked(true);
-    }
-    setLikeLoading(false);
-  }
-
-  return (
-    <div className="group bg-gray-900/60 border border-gray-800 hover:border-gray-600 rounded-2xl p-5 transition-all duration-300 hover:bg-gray-900">
-      <div className="flex justify-between items-start mb-3">
-        <Link href={`/show/${review.show_id}`} className="font-bold text-white hover:text-yellow-400 transition text-base leading-tight pr-4">
-          {review.show_name}
-        </Link>
-        <div className="flex-shrink-0 flex items-center gap-1 bg-gray-800 px-2.5 py-1 rounded-lg">
-          <span className="text-yellow-400 text-sm">⭐</span>
-          <span className="text-yellow-400 font-black text-sm">{review.rating}</span>
-          <span className="text-gray-600 text-xs">/10</span>
-        </div>
-      </div>
-
-      {/* Rating bar */}
-      <div className="flex gap-0.5 mb-3">
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className={`h-0.5 flex-1 rounded-full ${i < review.rating ? 'bg-yellow-400' : 'bg-gray-700'}`} />
-        ))}
-      </div>
-
-      <p className="text-gray-300 text-sm leading-relaxed">{review.review}</p>
-
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-800">
-        <p className="text-gray-600 text-xs">{new Date(review.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
-        <button
-          onClick={toggleLike}
-          disabled={likeLoading || !user}
-          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${
-            liked
-              ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
-              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-          } disabled:opacity-40 disabled:cursor-not-allowed`}
-          title={!user ? 'Login to like' : undefined}
-        >
-          <span>{liked ? '❤️' : '🤍'}</span>
-          <span>{likes}</span>
-        </button>
-      </div>
-    </div>
-  );
-}
+import ReviewCard from '../../ReviewCard';
 
 export default function PublicProfile() {
   const { username } = useParams();
+  const { user } = useAuth();
   const [reviews, setReviews] = useState<any[]>([]);
   const [watched, setWatched] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -215,13 +136,15 @@ export default function PublicProfile() {
         </div>
 
         {activeTab === 'reviews' && (
-          <div className="space-y-4">
+          <div>
             {reviews.length === 0 ? (
               <div className="text-center py-20 text-gray-600">
                 <p className="text-5xl mb-4">🎬</p>
                 <p className="text-lg font-light">No reviews yet</p>
               </div>
-            ) : reviews.map((r) => <ReviewCard key={r.id} review={r} />)}
+            ) : reviews.map((r) => (
+              <ReviewCard key={r.id} review={r} user={user} />
+            ))}
           </div>
         )}
 
