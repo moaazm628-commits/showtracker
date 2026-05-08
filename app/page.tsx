@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 function ShowCard({ show }: { show: any }) {
   return (
@@ -40,17 +41,78 @@ function Row({ title, shows }: { title: string; shows: any[] }) {
 }
 
 function ReviewCard({ review }: { review: any }) {
+  const { user } = useAuth();
+  const [likes, setLikes] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  useEffect(() => {
+    async function checkLike() {
+      if (!user) return;
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('review_id', review.id)
+        .single();
+      setLiked(!!data);
+    }
+
+    async function getLikes() {
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('review_id', review.id);
+      setLikes(count || 0);
+    }
+
+    checkLike();
+    getLikes();
+  }, [user, review.id]);
+
+  async function toggleLike() {
+    if (!user) return;
+    setLikeLoading(true);
+    if (liked) {
+      await supabase.from('likes').delete().eq('user_id', user.id).eq('review_id', review.id);
+      setLikes((l) => l - 1);
+      setLiked(false);
+    } else {
+      await supabase.from('likes').insert([{ user_id: user.id, review_id: review.id }]);
+      setLikes((l) => l + 1);
+      setLiked(true);
+    }
+    setLikeLoading(false);
+  }
+
   return (
-    <div className="flex-shrink-0 w-72 bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-gray-600 transition">
-      <p className="font-bold text-yellow-400 truncate text-sm">{review.show_name}</p>
-      <div className="flex items-center gap-1 mt-1">
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className={`h-1 w-4 rounded ${i < review.rating ? 'bg-yellow-400' : 'bg-gray-700'}`} />
-        ))}
-        <span className="text-yellow-400 text-xs ml-1">{review.rating}/10</span>
+    <div className="flex-shrink-0 w-72 bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-gray-600 transition flex flex-col justify-between">
+      <div>
+        <p className="font-bold text-yellow-400 truncate text-sm">{review.show_name}</p>
+        <div className="flex items-center gap-1 mt-1">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className={`h-1 w-4 rounded ${i < review.rating ? 'bg-yellow-400' : 'bg-gray-700'}`} />
+          ))}
+          <span className="text-yellow-400 text-xs ml-1">{review.rating}/10</span>
+        </div>
+        <p className="text-gray-300 text-sm mt-2 line-clamp-3">{review.review}</p>
+        <p className="text-gray-600 text-xs mt-3">by <Link href={'/profile/' + review.author} className="hover:text-yellow-400">{review.author}</Link></p>
       </div>
-      <p className="text-gray-300 text-sm mt-2 line-clamp-3">{review.review}</p>
-     <p className="text-gray-600 text-xs mt-3">by <Link href={'/profile/' + review.author} className="hover:text-yellow-400">{review.author}</Link></p>
+      <div className="mt-4 flex items-center">
+        <button
+          onClick={toggleLike}
+          disabled={likeLoading || !user}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition ${
+            liked
+              ? 'bg-yellow-500 text-black'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          title={!user ? 'Login to like' : undefined}
+        >
+          <span>{liked ? '❤️' : '🤍'}</span>
+          <span>{likes}</span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,76 @@ import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../AuthContext';
 
+function ReviewCard({ review, user, showName }: { review: any; user: any; showName: string }) {
+  const [likes, setLikes] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  useEffect(() => {
+    async function checkLike() {
+      if (!user) return;
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('review_id', review.id)
+        .single();
+      setLiked(!!data);
+    }
+
+    async function getLikes() {
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('review_id', review.id);
+      setLikes(count || 0);
+    }
+
+    checkLike();
+    getLikes();
+  }, [user, review.id]);
+
+  async function toggleLike() {
+    if (!user) return;
+    setLikeLoading(true);
+    if (liked) {
+      await supabase.from('likes').delete().eq('user_id', user.id).eq('review_id', review.id);
+      setLikes((l) => l - 1);
+      setLiked(false);
+    } else {
+      await supabase.from('likes').insert([{ user_id: user.id, review_id: review.id }]);
+      setLikes((l) => l + 1);
+      setLiked(true);
+    }
+    setLikeLoading(false);
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-4 mb-4 border border-gray-800">
+      <div className="flex justify-between items-center mb-2">
+        <div>
+          <span className="font-bold text-white">{review.author}</span>
+          {review.show_name !== showName && (
+            <span className="text-yellow-400 text-xs ml-2">{review.show_name.replace(showName + ' - ', '')}</span>
+          )}
+        </div>
+        <span className="text-yellow-400 font-bold">⭐ {review.rating}/10</span>
+      </div>
+      <p className="text-gray-300">{review.review}</p>
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-gray-600 text-xs">{new Date(review.created_at).toLocaleDateString()}</p>
+        <button
+          onClick={toggleLike}
+          disabled={likeLoading || !user}
+          className={`flex items-center gap-1 text-sm px-3 py-1 rounded-lg transition ${liked ? 'bg-yellow-500 text-black font-bold' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+        >
+          👍 {likes}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ShowDetail() {
   const { id } = useParams();
   const { user, username } = useAuth();
@@ -71,11 +141,7 @@ export default function ShowDetail() {
     }
     if (watched) {
       setWatchedLoading(true);
-      await supabase
-        .from('watched')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('show_id', id);
+      await supabase.from('watched').delete().eq('user_id', user.id).eq('show_id', id);
       setWatched(false);
       setWatchedLoading(false);
     } else {
@@ -181,7 +247,6 @@ export default function ShowDetail() {
               ))}
             </div>
             <p className="mt-4 text-gray-300 leading-relaxed text-sm">{show.overview}</p>
-
             <div className="flex gap-3 mt-4 flex-wrap items-center">
               {trailer && (
                 <a href={`https://www.youtube.com/watch?v=${trailer.key}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold transition">
@@ -295,29 +360,11 @@ export default function ShowDetail() {
           <h2 className="text-lg font-bold text-gray-100 mb-4 uppercase tracking-widest border-l-4 border-yellow-500 pl-3">All Reviews</h2>
           {reviews.length === 0 && <p className="text-gray-400">No reviews yet. Be the first!</p>}
           {reviews.map((r) => (
-            <div key={r.id} className="bg-gray-900 rounded-xl p-4 mb-4 border border-gray-800">
-              <div className="flex justify-between items-center mb-2">
-                <div>
-                   <Link href={'/profile/' + r.author} className="font-bold text-white hover:text-yellow-400">{r.author}</Link>
-                  {r.show_name !== show.name && (
-                    <span className="text-yellow-400 text-xs ml-2">{r.show_name.replace(show.name + ' - ', '')}</span>
-                  )}
-                </div>
-                <span className="text-yellow-400 font-bold">⭐ {r.rating}/10</span>
-              </div>
-              <p className="text-gray-300">{r.review}</p>
-              <div className="flex justify-between items-center mt-2">
-  <p className="text-gray-600 text-xs">{new Date(r.created_at).toLocaleDateString()}</p>
-  {username === r.author && (
-    <button onClick={async () => { await supabase.from('reviews').delete().eq('id', r.id); setReviews(reviews.filter(rev => rev.id !== r.id)); }} className="text-red-500 hover:text-red-400 text-xs">Delete</button>
-  )}
-</div>
-            </div>
+            <ReviewCard key={r.id} review={r} user={user} showName={show.name} />
           ))}
         </div>
       </div>
 
-      {/* Rating Popup */}
       {showRatingPopup && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
           <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-sm border border-gray-700">
@@ -336,17 +383,10 @@ export default function ShowDetail() {
               <span className="text-yellow-400 text-xl">⭐ /10</span>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={confirmWatched}
-                disabled={watchedLoading}
-                className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3 rounded-lg font-bold transition"
-              >
+              <button onClick={confirmWatched} disabled={watchedLoading} className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3 rounded-lg font-bold transition">
                 {watchedLoading ? '...' : 'Confirm Watched'}
               </button>
-              <button
-                onClick={() => setShowRatingPopup(false)}
-                className="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg transition"
-              >
+              <button onClick={() => setShowRatingPopup(false)} className="bg-gray-700 hover:bg-gray-600 px-4 py-3 rounded-lg transition">
                 Cancel
               </button>
             </div>
