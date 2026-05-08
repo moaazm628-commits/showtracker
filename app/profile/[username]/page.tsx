@@ -4,6 +4,79 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../AuthContext';
+
+function ReviewCard({ review }: { review: any }) {
+  const { user } = useAuth();
+  const [likes, setLikes] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+
+  useEffect(() => {
+    async function checkLike() {
+      if (!user) return;
+      const { data } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('review_id', review.id)
+        .single();
+      setLiked(!!data);
+    }
+
+    async function getLikes() {
+      const { count } = await supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('review_id', review.id);
+      setLikes(count || 0);
+    }
+
+    checkLike();
+    getLikes();
+  }, [user, review.id]);
+
+  async function toggleLike() {
+    if (!user) return;
+    setLikeLoading(true);
+    if (liked) {
+      await supabase.from('likes').delete().eq('user_id', user.id).eq('review_id', review.id);
+      setLikes((l) => l - 1);
+      setLiked(false);
+    } else {
+      await supabase.from('likes').insert([{ user_id: user.id, review_id: review.id }]);
+      setLikes((l) => l + 1);
+      setLiked(true);
+    }
+    setLikeLoading(false);
+  }
+
+  return (
+    <div className="bg-gray-900 rounded-xl p-4 mb-4 border border-gray-800">
+      <div className="flex justify-between items-center mb-2">
+        <Link href={`/show/${review.show_id}`} className="font-bold text-white hover:text-yellow-400">{review.show_name}</Link>
+        <span className="text-yellow-400 font-bold">⭐ {review.rating}/10</span>
+      </div>
+      <p className="text-gray-300">{review.review}</p>
+      <div className="flex items-center justify-between mt-3">
+        <p className="text-gray-600 text-xs">{new Date(review.created_at).toLocaleDateString()}</p>
+        <button
+          onClick={toggleLike}
+          disabled={likeLoading || !user}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition ${
+            liked
+              ? 'bg-yellow-500 text-black'
+              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          title={!user ? 'Login to like' : undefined}
+        >
+          <span>{liked ? '❤️' : '🤍'}</span>
+          <span>{likes}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function PublicProfile() {
   const { username } = useParams();
@@ -59,14 +132,7 @@ export default function PublicProfile() {
           <div>
             {reviews.length === 0 && <p className="text-gray-400">No reviews yet.</p>}
             {reviews.map((r) => (
-              <div key={r.id} className="bg-gray-900 rounded-xl p-4 mb-4 border border-gray-800">
-                <div className="flex justify-between items-center mb-2">
-                  <Link href={`/show/${r.show_id}`} className="font-bold text-white hover:text-yellow-400">{r.show_name}</Link>
-                  <span className="text-yellow-400 font-bold">⭐ {r.rating}/10</span>
-                </div>
-                <p className="text-gray-300">{r.review}</p>
-                <p className="text-gray-600 text-xs mt-2">{new Date(r.created_at).toLocaleDateString()}</p>
-              </div>
+              <ReviewCard key={r.id} review={r} />
             ))}
           </div>
         )}
