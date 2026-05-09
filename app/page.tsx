@@ -57,7 +57,6 @@ function ReviewCard({ review }: { review: any }) {
         .single();
       setLiked(!!data);
     }
-
     async function getLikes() {
       const { count } = await supabase
         .from('likes')
@@ -65,7 +64,6 @@ function ReviewCard({ review }: { review: any }) {
         .eq('review_id', review.id);
       setLikes(count || 0);
     }
-
     checkLike();
     getLikes();
   }, [user, review.id]);
@@ -102,11 +100,7 @@ function ReviewCard({ review }: { review: any }) {
         <button
           onClick={toggleLike}
           disabled={likeLoading || !user}
-          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition ${
-            liked
-              ? 'bg-yellow-500 text-black'
-              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition ${liked ? 'bg-yellow-500 text-black' : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
           title={!user ? 'Login to like' : undefined}
         >
           <span>{liked ? '❤️' : '🤍'}</span>
@@ -130,6 +124,8 @@ export default function Home() {
   const [searched, setSearched] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [featuredShow, setFeaturedShow] = useState<any>(null);
+  const [debate, setDebate] = useState<any>(null);
+  const [debateVotes, setDebateVotes] = useState<{ a: number; b: number }>({ a: 0, b: 0 });
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -155,6 +151,26 @@ export default function Home() {
         .order('created_at', { ascending: false })
         .limit(6);
       setReviews(data || []);
+
+      const { data: debateData } = await supabase
+        .from('debates')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (debateData) {
+        setDebate(debateData);
+        const { data: voteData } = await supabase
+          .from('debate_votes')
+          .select('side')
+          .eq('debate_id', debateData.id);
+        setDebateVotes({
+          a: (voteData || []).filter((v: any) => v.side === 'a').length,
+          b: (voteData || []).filter((v: any) => v.side === 'b').length,
+        });
+      }
     }
     fetchAll();
 
@@ -169,20 +185,14 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchSuggestions() {
-      if (query.length < 2) {
-        setSuggestions([]);
-        setShowSuggestions(false);
-        return;
-      }
+      if (query.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
       const [enRes, arRes] = await Promise.all([
         fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=en-US`),
         fetch(`https://api.themoviedb.org/3/search/tv?api_key=${process.env.NEXT_PUBLIC_TMDB_API_KEY}&query=${query}&language=ar-SA`),
       ]);
       const [enData, arData] = await Promise.all([enRes.json(), arRes.json()]);
       const combined = [...(enData.results || []), ...(arData.results || [])];
-      const unique = combined.filter((show, index, self) =>
-        index === self.findIndex((s) => s.id === show.id)
-      ).slice(0, 6);
+      const unique = combined.filter((show, index, self) => index === self.findIndex((s) => s.id === show.id)).slice(0, 6);
       setSuggestions(unique);
       setShowSuggestions(true);
     }
@@ -201,25 +211,17 @@ export default function Home() {
     ]);
     const [enData, arData] = await Promise.all([enRes.json(), arRes.json()]);
     const combined = [...(enData.results || []), ...(arData.results || [])];
-    const unique = combined.filter((show, index, self) =>
-      index === self.findIndex((s) => s.id === show.id)
-    );
+    const unique = combined.filter((show, index, self) => index === self.findIndex((s) => s.id === show.id));
     setSearchResults(unique);
     setLoading(false);
   }
 
   return (
     <div className="min-h-screen w-full bg-gray-950 text-white">
-
-      {/* Hero Section */}
       {featuredShow && !searched && (
         <div className="relative h-96 mb-8">
           {featuredShow.backdrop_path && (
-            <img
-              src={`https://image.tmdb.org/t/p/w1280${featuredShow.backdrop_path}`}
-              alt={featuredShow.name}
-              className="w-full h-full object-cover"
-            />
+            <img src={`https://image.tmdb.org/t/p/w1280${featuredShow.backdrop_path}`} alt={featuredShow.name} className="w-full h-full object-cover" />
           )}
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent" />
@@ -235,7 +237,6 @@ export default function Home() {
       )}
 
       <div className="max-w-7xl mx-auto px-6 pb-12">
-        {/* Search */}
         <div className="relative max-w-2xl mx-auto mb-12" ref={searchRef}>
           <div className="flex gap-2">
             <input
@@ -247,23 +248,15 @@ export default function Home() {
               placeholder="Search any TV show in English or Arabic..."
               className="flex-1 p-4 rounded-xl bg-gray-800 text-white border border-gray-700 focus:outline-none focus:border-yellow-500 text-sm"
             />
-            <button onClick={searchShows} className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-4 rounded-xl font-bold text-sm transition">
-              Search
-            </button>
+            <button onClick={searchShows} className="bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-4 rounded-xl font-bold text-sm transition">Search</button>
             {searched && (
               <button onClick={() => { setSearched(false); setQuery(''); setSuggestions([]); }} className="bg-gray-800 hover:bg-gray-700 px-4 py-4 rounded-xl text-sm transition">✕</button>
             )}
           </div>
-
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 bg-gray-900 border border-gray-700 rounded-xl mt-2 z-50 overflow-hidden shadow-2xl">
               {suggestions.map((show) => (
-                <Link
-                  key={show.id}
-                  href={`/show/${show.id}`}
-                  onClick={() => { setShowSuggestions(false); setQuery(''); }}
-                  className="flex items-center gap-3 p-3 hover:bg-gray-800 transition"
-                >
+                <Link key={show.id} href={`/show/${show.id}`} onClick={() => { setShowSuggestions(false); setQuery(''); }} className="flex items-center gap-3 p-3 hover:bg-gray-800 transition">
                   {show.poster_path ? (
                     <img src={`https://image.tmdb.org/t/p/w92${show.poster_path}`} alt={show.name} className="w-10 h-14 object-cover rounded" />
                   ) : (
@@ -294,6 +287,51 @@ export default function Home() {
                 </div>
               </div>
             )}
+
+            {debate && (
+              <div className="mb-12">
+                <div className="relative overflow-hidden rounded-2xl border border-gray-800 bg-gray-900">
+                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-transparent to-red-500/5 pointer-events-none" />
+                  <div className="relative p-6 md:p-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="bg-yellow-500 text-black text-xs font-black px-3 py-1 rounded-full tracking-widest uppercase">⚡ Debate of the Week</span>
+                      <Link href="/debate" className="text-yellow-400 hover:text-yellow-300 text-xs font-bold tracking-widest uppercase transition">Join Debate →</Link>
+                    </div>
+                    <h3 className="text-2xl font-black text-white mb-6 leading-tight">{debate.title}</h3>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <Link href="/debate" className="bg-gray-800 hover:bg-yellow-500/10 border border-gray-700 hover:border-yellow-500/50 rounded-xl p-4 transition-all">
+                        <p className="text-yellow-400 text-xs font-black tracking-widest uppercase mb-1">Side A</p>
+                        <p className="text-white font-black text-base leading-tight">{debate.side_a}</p>
+                        <p className="text-gray-500 text-xs mt-2">{debateVotes.a} votes</p>
+                      </Link>
+                      <Link href="/debate" className="bg-gray-800 hover:bg-red-500/10 border border-gray-700 hover:border-red-500/50 rounded-xl p-4 transition-all">
+                        <p className="text-red-400 text-xs font-black tracking-widest uppercase mb-1">Side B</p>
+                        <p className="text-white font-black text-base leading-tight">{debate.side_b}</p>
+                        <p className="text-gray-500 text-xs mt-2">{debateVotes.b} votes</p>
+                      </Link>
+                    </div>
+                    {(() => {
+                      const total = debateVotes.a + debateVotes.b;
+                      const pctA = total ? Math.round((debateVotes.a / total) * 100) : 50;
+                      return (
+                        <div>
+                          <div className="flex justify-between text-xs font-black mb-1">
+                            <span className="text-yellow-400">{pctA}%</span>
+                            <span className="text-red-400">{100 - pctA}%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-gray-800 flex overflow-hidden">
+                            <div className="bg-yellow-400 h-full transition-all duration-700" style={{ width: `${pctA}%` }} />
+                            <div className="bg-red-400 h-full transition-all duration-700" style={{ width: `${100 - pctA}%` }} />
+                          </div>
+                          <p className="text-gray-600 text-xs mt-2 text-center">{total} votes cast · <Link href="/debate" className="text-yellow-400 hover:text-yellow-300">Vote & argue →</Link></p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Row title="Trending This Week" shows={trending} />
             <Row title="Most Viewed" shows={popular} />
             <Row title="Top Rated" shows={topRated} />
